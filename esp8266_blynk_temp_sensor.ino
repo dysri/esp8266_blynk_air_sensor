@@ -32,12 +32,17 @@
 /* Comment this out to disable prints and save space */
 //#define BLYNK_PRINT Serial
 
-
 #include <ESP8266_Lib.h>
 #include <BlynkSimpleShieldEsp8266.h>
+#include <DHT.h>
+#include <DHT_U.h>
 
 #define aref_voltage 3.3
-int sensorPin = 0;
+
+int dht22Pin = 2;
+int tmp36Pin = 0;
+
+DHT dht22(dht22Pin, DHT22);
 
 // Blynk Auth token
 char auth[] = "5e92d6b9165148f1a8851542ae6e00b4";
@@ -57,10 +62,11 @@ BlynkTimer timer;
 ESP8266 wifi(&EspSerial);
 
 void timerEvent(){
-  // Take multiple readings and average to smooth sensor signal
+  
+  // Take multiple TMP36 readings and average to smooth sensor signal
   int reading_total = 0;
   for (int i=0; i <= 9; i++) {
-    int reading = analogRead(sensorPin); // Get the voltage reading from the temperature sensor
+    int reading = analogRead(tmp36Pin); // Get the voltage reading from the temperature sensor
     reading_total += reading;
     delay(50);
   }
@@ -70,21 +76,31 @@ void timerEvent(){
   float voltage = avg_reading * aref_voltage;
   voltage /= 1024.0; 
  
-  // Print out the voltage
-  //Serial.print(voltage); Serial.println(" volts");
- 
   // Convert from 10 mv per degree wit 500 mV offset to degrees ((voltage - 500mV) times 100)
   float temperatureC = (voltage - 0.5) * 100 ;
-  
-  // Print temperature in Celsius
-  //Serial.print(temperatureC); Serial.println(" degrees C");
  
   // Convert Celsius to Fahrenheit
   float temperatureF = (temperatureC * 9.0 / 5.0) + 32.0;
 
-  // Print temperature in Fahrenheit
-  //Serial.print(temperatureF); Serial.println(" degrees F");
+  // Take reading on DHT22
+  float hum = dht22.readHumidity();
+  float tempf_22 = dht22.readTemperature(true);
+
+  // Print TMP36 values to Serial
+//  Serial.print("TMP36:\tVoltage: ");
+//  Serial.print(voltage); Serial.print(" V\tTemperature: ");
+//  Serial.print(temperatureF); Serial.println(" F");
+//  
+//  if (isnan(hum) || isnan(tempf_22)) {
+//    Serial.println("Failed to read from DHT sensor!");
+//    return;
+//  }
+//  Serial.print("DHT22:\tTemperature: "); Serial.print(tempf_22);
+//  Serial.print(" F\tHumidity: "); Serial.print(hum); Serial.println(" %");
+  
   Blynk.virtualWrite(V0, temperatureF);
+  Blynk.virtualWrite(V1, tempf_22);
+  Blynk.virtualWrite(V2, hum);
 }
 
 void setup()
@@ -93,12 +109,12 @@ void setup()
   //Serial.begin(9600);
   
   analogReference(EXTERNAL);
-  delay(10);
 
   // Set ESP8266 baud rate
   EspSerial.begin(ESP8266_BAUD);
-  delay(10);
-
+  
+  dht22.begin();
+  
   Blynk.begin(auth, wifi, ssid, pass);
   timer.setInterval(300000L, timerEvent);
 }
