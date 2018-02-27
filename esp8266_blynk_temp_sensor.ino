@@ -82,8 +82,6 @@ void timerEvent(){
 
 void setup()
 {
-  wdt_enable(WDTO_8S);
-  
   analogReference(EXTERNAL);
 
   // Set ESP8266 baud rate
@@ -93,13 +91,19 @@ void setup()
   
   Blynk.begin(auth, wifi, ssid, pass);
   timer.setInterval(5000L, timerEvent);
-  wdt_reset();
+  
+  wdt_enable(WDTO_8S);
 }
 
 void loop()
 {
+  if (Blynk.connected()){
   Blynk.run();
   timer.run();
+  }
+  else {
+    while (true){};
+  }
 }
 
 
